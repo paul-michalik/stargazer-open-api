@@ -1,0 +1,514 @@
+openapi: 3.0.0
+info:
+  version: "0.1.1"
+  title: map.ingest.api
+  description: The API for map data ingestion
+servers:
+  - description: SwaggerHub API AutoMocking
+    url: https://virtserver.swaggerhub.com/stargazer/map.ingest/0.1.1
+  - description: Azure development instance
+    url: https://azure.com/stargazer/map.ingest/0.1.1
+paths:
+  /agents:
+    get:
+      tags:
+        - Agents
+      summary: Retrieves registered and accessible agents and whatever
+      description: Retrieves all previously registered and accessible agents
+      operationId: GetAgents
+      security: 
+        - oAuthSample: [agents:read]
+      parameters:
+        - in: query
+          name: skip
+          description: Number of agents to skip
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            default: 10
+        - in: query
+          name: limit
+          description: Maximum number of agents to return
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: The requested page of accessible agents (OK)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-swagger-router-controller: Agents
+    post:
+      tags:
+        - Agents
+      summary: Registers a new agent
+      description: >
+        Registers a new agent with the given detailed data. Enables the agent to post map data using the assigned ID from response body.
+      operationId: RegisterAgent
+      security: 
+        - oAuthSample: [agents:write]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data: 
+                  $ref: '#/components/schemas/AgentData'
+                callbackUrl: 
+                  description: URI to post result to
+                  type: string 
+                  format: uri
+      callbacks:
+        resultEvent:
+          '{$request.body#/callbackUrl}':
+            post:
+              requestBody:
+                description: Agent registration finished result
+                content:
+                  application/json:
+                    schema:
+                      oneOf:
+                        - $ref: '#/components/schemas/Agent'
+                        - $ref: '#/components/schemas/ProblemReport'
+              responses:
+                '200':
+                  description: Return this code if you accept the callback
+      responses:
+        '202':
+          $ref: '#/components/responses/Accepted'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-swagger-router-controller: Agents
+  '/agents/{ID}':
+    get:
+      tags:
+        - Agent Data
+      summary: Returns agent details
+      description: >
+        Retrieves the detailed data for the agent represented by {ID} in the system.
+      operationId: GetAgentData
+      security: 
+        - oAuthSample: [agents:read]
+      parameters:
+        - name: ID
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/AgentID'
+      responses:
+        '200':
+          description: response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentData'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-swagger-router-controller: AgentData
+    patch:
+      tags:
+        - Agent Data
+      summary: Updates agent details
+      description: >
+        Updates the detailed data for the agent represented by {ID} in the system.
+      operationId: SetAgentData
+      security: 
+        - oAuthSample: [agents:write]
+      parameters:
+        - name: ID
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/AgentID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data: 
+                  $ref: '#/components/schemas/AgentData'
+                callbackUrl: 
+                  description: URI to post result to
+                  type: string 
+                  format: uri
+      callbacks:
+        resultEvent:
+          '{$request.body#/callbackUrl}':
+            post:
+              requestBody:
+                description: Agent detail update finished result
+                content:
+                  application/json:
+                    schema:
+                      oneOf:
+                        - $ref: '#/components/schemas/AgentID'
+                        - $ref: '#/components/schemas/ProblemReport'
+              responses:
+                '200':
+                  description: Return this code if you accept the callback
+      responses:
+        '202':
+          $ref: '#/components/responses/Accepted'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-swagger-router-controller: AgentData
+    delete:
+      tags:
+        - Agent Data
+      summary: Deletes agent details
+      description: >
+        Deletes the detailed data for the agent represented by {ID} in the system. The agent is unregistered from the system and no longer able to post map data. Already posted map data remains accessible to system.
+      operationId: DeleteAgentData
+      security: 
+        - oAuthSample: [agents:write]
+      parameters:
+        - name: ID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: 0729a580-2240-11e6-9eb5-0002a5d5c51b
+      responses:
+        '200':
+          description: Agent details have been deleted (OK)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentID'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-swagger-router-controller: AgentData
+      
+  '/agents/{ID}/maps':
+    post:
+      tags:
+        - Map Data
+      summary: Posts new local map to the system
+      description: >
+        Posts a new local map to the system using the given bounded context. The context describes the spatial and temporal extension of the local data.
+      operationId: AddMapData
+      security: 
+        - oAuthSample: [agents:write, maps:write]
+      parameters:
+        - name: ID
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: bounds
+          in: query
+          required: true
+          schema:
+              $ref: '#/components/schemas/MapBounds'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mapData: 
+                  $ref: '#/components/schemas/EncodedMapData'
+                callbackUrl: 
+                  description: URI to post result to
+                  type: string 
+                  format: uri
+      callbacks:
+        resultEvent:
+          '{$request.body#/callbackUrl}':
+            post:
+              requestBody:
+                description: Local map data add result
+                content:
+                  application/json:
+                    schema:
+                      oneOf:
+                        - $ref: '#/components/schemas/AgentID'
+                        - $ref: '#/components/schemas/ProblemReport'
+              responses:
+                '200':
+                  description: Return this code if you accept the callback
+      responses:
+        '202':
+          $ref: '#/components/responses/Accepted'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-swagger-router-controller: MapData
+    patch:
+      tags:
+        - Map Data
+      summary: Updates existing local map in the system
+      description: >
+        Updates an existing local map to the system re-using a previous bounded context. The context describes the spatial and temporal extension of the local data.
+      operationId: UpdateMapData
+      security: 
+        - oAuthSample: [agents:write, maps:write]
+      parameters:
+        - name: ID
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: bounds
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/BoundedContext'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mapData: 
+                  $ref: '#/components/schemas/EncodedMapData'
+                callbackUrl: 
+                  description: URI to post result to
+                  type: string 
+                  format: uri
+      callbacks:
+        resultEvent:
+          '{$request.body#/callbackUrl}':
+            post:
+              requestBody:
+                description: Local map data update result
+                content:
+                  application/json:
+                    schema:
+                      oneOf:
+                        - $ref: '#/components/schemas/AgentID'
+                        - $ref: '#/components/schemas/ProblemReport'
+              responses:
+                '200':
+                  description: Return this code if you accept the callback
+      responses:
+        '202':
+          $ref: '#/components/responses/Accepted'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-swagger-router-controller: MapData
+components:
+  securitySchemes:
+    MobilityServices:
+      type: oauth2
+      description: >
+        This API uses OAuth 2 with the authorization flow
+      flows:
+        authorizationCode:
+          authorizationUrl: /oauth/authorize
+          tokenUrl: /api/oauth.access
+          scopes:
+            agents:read: Read agent data
+            agents:write: Create and delete agents. Modify agent data
+            maps:write: Create and modify local map data
+  responses:
+    Accepted:
+      description: Request was received and is being processed (Accepted)
+    BadRequest:
+      description: Request could not be understood by the server (Bad Request)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemReport'
+    Unauthorized:
+      description: Request requires authentication on server (Unauthorized)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemReport'
+    NotFound:
+      description: No resource is available at the given request URI (Not Found)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemReport'
+    InternalServerError:
+      description: Server issue has occurred while handling the request (Internal Server Error)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemReport'
+  schemas:
+    ProblemReport:
+      description: Problem details report as described by RFC 7807
+      type: object
+      readOnly: true
+      properties:
+        type :
+          description: Absolute URI [RFC3986] that identifies the problem type
+          example: "https://azure.com/stargazer/map.ingest/R3415726"
+          type: string
+          format: uri
+        title:
+          description: Short, human-readable summary of the problem type
+          example: "Request could not be understood by the server"
+          type: string
+        status:
+          description: HTTP status code.
+          example: 400
+          type: integer
+        detail:
+          description: Human readable explanation specific to this occurrence of the problem
+          example: "Request contains unexpected parameter(s) [xyz=abc]"
+          type: string
+    AgentID:
+      description: Universally unique identifier as described by RFC 4122
+      example: "0729a580-2240-11e6-9eb5-0002a5d5c51b"
+      type: string
+      readOnly: true
+      format: uuid
+    Sensor:
+      description: Information associated to an installed sensor
+      type: object
+      readOnly: true
+      properties:
+        type: 
+          description: Type of installed sensor
+          type: string
+          enum: [camera, gps, lidar, radar]
+        details:
+          description: The sensors details, e.g. information quality (TBD)
+          type: string
+    AgentData:
+      description: Detailed data associated to a registered agent (TBD)
+      type: object
+      readOnly: true
+      properties:
+        group:
+          description: Agent group determining its associated context
+          type: string
+          example: "fleet/ABC"
+        type: 
+          description: Archetype of agent determining its movement capabilities
+          type: string
+          example: "vehicle"
+        sensors:
+          description: List of available sensors determining agents perception capabilities
+          type: array
+          items:
+              $ref: '#/components/schemas/Sensor'
+    Agent:
+      type: object
+      readOnly: true
+      properties:
+        id: 
+          $ref: '#/components/schemas/AgentID'
+        data:
+          description: Relative URI (as of RFC 3986) to agent data interface
+          example: "/agents/0729a580-2240-11e6-9eb5-0002a5d5c51b"
+          type: string
+          format: uri
+        maps: 
+          description: Relative URI (as of RFC 3986) to map data interface
+          example: "/agents/0729a580-2240-11e6-9eb5-0002a5d5c51b/maps"
+          type: string
+          format: uri  
+    AgentPage:
+      description: Forward-linked page of accessible agents
+      type: object
+      readOnly: true
+      properties:
+        agents:
+          description: Range of IDs representing a page of accessible agents.
+          type: array
+          items:
+              $ref: '#/components/schemas/Agent'
+        next: 
+          description: Relative URI (as of RFC 3986) to next page of data 
+          example: "/agents?skip=5&limit=5"
+          type: string
+          format: uri
+    Latitude:
+      description: Latitude component of WGS84 coordinate
+      example: 9.993582
+      type: number
+      readOnly: true
+      format: float
+      minimum: -90.0
+      maximum: 90.0
+    Longitude:
+      description: Longitude component of WGS84 coordinate
+      example: 53.550986
+      type: number
+      readOnly: true
+      format: float
+      minimum: -180.0
+      maximum: 180.0
+    MapBounds:
+      description: Bounded context of a local map ([x0..x1], [y0..y1], [t0..t1])
+      type: object
+      readOnly: true
+      properties:
+        fromLon:
+          $ref: '#/components/schemas/Longitude'
+        toLon:
+          $ref: '#/components/schemas/Longitude'
+        fromLat: 
+          $ref: '#/components/schemas/Latitude'
+        toLat: 
+          $ref: '#/components/schemas/Latitude'
+        fromTime:
+          description: Minimal data age (UTC)
+          type: string
+          format: date-time
+        toTime:
+          description: Maximal data age (UTC)
+          type: string
+          format: date-time
+    EncodedMapData:
+      description: Encoded map data
+      type : object
+      readOnly: true
+      properties:
+        decoder:
+            description: Absolute URI [RFC3986] that identifies the map data decoder
+            example: "https://azure.com/stargazer/map.ingest/decoders/json-fast-slam"
+            type: string
+            format: uri
+        data:
+          description: Map data blob
+          type: string
+          format: binary
