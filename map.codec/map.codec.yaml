@@ -1,0 +1,463 @@
+openapi: 3.0.0
+info:
+  version: "1.0.0"
+  title: map.codec.api
+  description: The API for decoding and encoding of map data
+servers:
+  - description: SwaggerHub API Auto Mocking
+    url: https://virtserver.swaggerhub.com/TBerndt/map.codec.api/1.0.0
+  - description: Azure development instance
+    url: https://azure.com/stargazer/map.codec/1.0.0
+paths:
+  '/codecs':
+    get:
+      tags:
+        - Codecs
+      description: Retrieves list of compatible codecs based on given content format
+      operationId: GetCodecs
+      security: 
+        - oAuthSample: [read]
+      parameters:
+        - name: input-format
+          in: query
+          description: Content format to encode from
+          schema:
+            type: string
+        - name: output-format
+          in: query
+          description: Content format to decode to
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A list compatible codecs (OK)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Codec'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags:
+        - Codecs
+      description: Registers a new codec for the given content formats
+      operationId: AddCodec
+      security: 
+        - oAuthSample: [write]
+      requestBody:
+        description: The codecs meta information.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CodecInfo'
+      responses:
+        '200':
+          description: Codec successfully registered (OK)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Codec'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  '/codecs/{ID}':
+    get:
+      tags:
+        - Codec
+      description: Retrieves meta information for an existing codec.
+      operationId: GetCodecInfo
+      security: 
+        - oAuthSample: [read]
+      parameters:
+        - name: ID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Codec'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      tags:
+        - Codec
+      description: Updates meta information of an existing codec by ID.
+      operationId: UpdateCodec
+      security: 
+        - oAuthSample: [write]
+      parameters:
+        - name: ID
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: The updated codec info.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CodecInfo'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodecID'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+        - Codec
+      description: Deletes an existing codec by ID. This includes current encoder and decoder.
+      operationId: DeleteCodec
+      security: 
+        - oAuthSample: [write]
+      parameters:
+        - name: ID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  '/codecs/{ID}/encoder':
+    get:
+      tags:
+        - Encoder
+      description: Downloads encoder implementation as WebAssembly
+      operationId: GetEncoder
+      security: 
+        - oAuthSample: [read]
+      parameters:
+        - name: ID
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: input-format
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: callbackURL
+          description: URI to post result to
+          in: query
+          required: true
+          schema:
+            type: string 
+            format: uri
+      callbacks:
+        resultEvent:
+          '{$request.callbackURL}':
+            post:
+              requestBody:
+                description: The encoder implementation
+                content:
+                  application/wasm:
+                    schema:
+                      type: string
+                      format: binary
+              responses:
+                  '200':
+                    description: Return this code if you accept the callback
+      responses:
+        '202':
+          $ref: '#/components/responses/Accepted'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      tags:
+        - Encoder
+      description: Replaces encoder implementation by given WebAssembly
+      operationId: ReplaceEncoder
+      security: 
+        - oAuthSample: [write]
+      parameters:
+        - name: ID
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: input-format
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: callbackURL
+          description: URI to post result to
+          in: query
+          required: true
+          schema:
+            type: string 
+            format: uri
+      callbacks:
+        resultEvent:
+          '{$request.callbackURL}':
+            post:
+              description: Upload finished.
+              responses:
+                '200':
+                  description: Return this code if you accept the callback
+      requestBody:
+        content:
+          application/wasm:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '202':
+          $ref: '#/components/responses/Accepted'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  '/codecs/{ID}/decoder':
+    get:
+      tags:
+        - Decoder
+      description: Downloads decoder implementation as WebAssembly
+      operationId: GetDecoder
+      security: 
+        - oAuthSample: [read]
+      parameters:
+        - name: ID
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: output-format
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: callbackURL
+          description: URI to post result to
+          in: query
+          required: true
+          schema:
+            type: string 
+            format: uri
+      callbacks:
+        resultEvent:
+          '{$request.callbackURL}':
+            post:
+              requestBody:
+                description: The decoder implementation
+                content:
+                  application/wasm:
+                    schema:
+                      type: string
+                      format: binary
+              responses:
+                  '200':
+                    description: Return this code if you accept the callback
+      responses:
+        '202':
+          $ref: '#/components/responses/Accepted'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      tags:
+        - Decoder
+      description: Replaces decoder implementation by given WebAssembly
+      operationId: ReplaceDecoder
+      security: 
+        - oAuthSample: [write]
+      parameters:
+        - name: ID
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: output-format
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: callbackURL
+          description: URI to post result to
+          in: query
+          required: true
+          schema:
+            type: string 
+            format: uri
+      callbacks:
+        resultEvent:
+          '{$request.callbackURL}':
+            post:
+              description: Upload finished.
+              responses:
+                '200':
+                  description: Return this code if you accept the callback
+      requestBody:
+        content:
+          application/wasm:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '202':
+          $ref: '#/components/responses/Accepted'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+components:
+  responses:
+    Accepted:
+      description: Request was received and is being processed (Accepted)
+    BadRequest:
+      description: Request could not be understood by the server (Bad Request)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemReport'
+    Unauthorized:
+      description: Request requires authentication on server (Unauthorized)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemReport'
+    NotFound:
+      description: No resource is available at the given request URI (Not Found)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemReport'
+    InternalServerError:
+      description: Server issue has occurred while handling the request (Internal Server Error)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemReport'
+  schemas:
+    ProblemReport:
+      description: Problem details report as described by RFC 7807
+      type: object
+      readOnly: true
+      properties:
+        type :
+          description: Absolute URI [RFC3986] that identifies the problem type
+          example: "https://azure.com/stargazer/map.codec/R3415726"
+          type: string
+          format: uri
+        title:
+          description: Short, human-readable summary of the problem type
+          example: "Request could not be understood by the server"
+          type: string
+        status:
+          description: HTTP status code.
+          example: 400
+          type: integer
+        detail:
+          description: Human readable explanation specific to this occurrence of the problem
+          example: "Request contains unexpected parameter(s) [xyz=abc]"
+          type: string
+    CodecID:
+      description: Universally unique identifier as described by RFC 4122
+      example: "0729a580-2240-11e6-9eb5-0002a5d5c51b"
+      type: string
+      readOnly: true
+      format: uuid
+    CodecVersion:
+      description: Semantic versioning specification as described by RFC 2119
+      example: "1.0.0"
+      type: string
+      readOnly: true
+      pattern: '^\d.\d.\d$'
+    CodecInfo:
+      description: Represents meta information associated to a codec in the system
+      type: object
+      readOnly: true
+      properties:
+        name:
+          description: Human readable name specific to this codec
+          type: string
+        version:
+          $ref: '#/components/schemas/CodecVersion'
+        input-formats: 
+          description: Supported list of input formats by this codec
+          type: array
+          items:
+            type: string  
+        output-formats: 
+          description: Supported list of output formats by this codec
+          type: array
+          items:
+            type: string 
+    Codec:
+      description: Represents a registered codec in the system
+      type: object
+      readOnly: true
+      properties:
+        id: 
+          $ref: '#/components/schemas/CodecID'
+        info: 
+          $ref: '#/components/schemas/CodecInfo'
+        encoder:
+          description: Relative URI (as of RFC 3986) to encoder interface
+          example: "/codecs/0729a580-2240-11e6-9eb5-0002a5d5c51b/encode"
+          type: string
+          format: uri
+        decoder: 
+          description: Relative URI (as of RFC 3986) to decoder interface
+          example: "/codecs/0729a580-2240-11e6-9eb5-0002a5d5c51b/decode"
+          type: string
+          format: uri
+  securitySchemes:
+    application:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: 'http://example.com/oauth/token'
+          scopes:
+            write: Allows modifying codecs
+            read: Allows reading codecs
