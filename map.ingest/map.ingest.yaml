@@ -13,7 +13,7 @@ paths:
     get:
       tags:
         - Agents
-      summary: Retrieves registered and accessible agents and whatever
+      summary: Retrieves registered and accessible agents
       description: Retrieves all previously registered and accessible agents
       operationId: GetAgents
       security: 
