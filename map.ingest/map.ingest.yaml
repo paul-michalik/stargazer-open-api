@@ -17,7 +17,7 @@ paths:
       description: Retrieves all previously registered and accessible agents
       operationId: GetAgents
       security: 
-        - oAuthSample: [agents:read]
+        - oAuthSample: [agents-read]
       parameters:
         - in: query
           name: skip
@@ -55,7 +55,7 @@ paths:
         Registers a new agent with the given detailed data. Enables the agent to post map data using the assigned ID from response body.
       operationId: RegisterAgent
       security: 
-        - oAuthSample: [agents:write]
+        - oAuthSample: [agents-write]
       requestBody:
         content:
           application/json:
@@ -72,14 +72,13 @@ paths:
         resultEvent:
           '{$request.body#/callbackUrl}':
             post:
+              operationId: RegisterAgentResult
               requestBody:
                 description: Agent registration finished result
                 content:
                   application/json:
                     schema:
-                      oneOf:
-                        - $ref: '#/components/schemas/Agent'
-                        - $ref: '#/components/schemas/ProblemReport'
+                      $ref: '#/components/schemas/Agent'
               responses:
                 '200':
                   description: Return this code if you accept the callback
@@ -102,7 +101,7 @@ paths:
         Retrieves the detailed data for the agent represented by {ID} in the system.
       operationId: GetAgentData
       security: 
-        - oAuthSample: [agents:read]
+        - oAuthSample: [agents-read]
       parameters:
         - name: ID
           in: path
@@ -133,7 +132,7 @@ paths:
         Updates the detailed data for the agent represented by {ID} in the system.
       operationId: SetAgentData
       security: 
-        - oAuthSample: [agents:write]
+        - oAuthSample: [agents-write]
       parameters:
         - name: ID
           in: path
@@ -156,14 +155,13 @@ paths:
         resultEvent:
           '{$request.body#/callbackUrl}':
             post:
+              operationId: SetAgentDataResult
               requestBody:
                 description: Agent detail update finished result
                 content:
                   application/json:
                     schema:
-                      oneOf:
-                        - $ref: '#/components/schemas/AgentID'
-                        - $ref: '#/components/schemas/ProblemReport'
+                       $ref: '#/components/schemas/AgentID'
               responses:
                 '200':
                   description: Return this code if you accept the callback
@@ -185,7 +183,7 @@ paths:
         Deletes the detailed data for the agent represented by {ID} in the system. The agent is unregistered from the system and no longer able to post map data. Already posted map data remains accessible to system.
       operationId: DeleteAgentData
       security: 
-        - oAuthSample: [agents:write]
+        - oAuthSample: [agents-write]
       parameters:
         - name: ID
           in: path
@@ -220,7 +218,7 @@ paths:
         Posts a new local map to the system using the given bounded context. The context describes the spatial and temporal extension of the local data.
       operationId: AddMapData
       security: 
-        - oAuthSample: [agents:write, maps:write]
+        - oAuthSample: [agents-write, maps-write]
       parameters:
         - name: ID
           in: path
@@ -248,14 +246,13 @@ paths:
         resultEvent:
           '{$request.body#/callbackUrl}':
             post:
+              operationId: AddMapDataResult
               requestBody:
                 description: Local map data add result
                 content:
                   application/json:
                     schema:
-                      oneOf:
-                        - $ref: '#/components/schemas/AgentID'
-                        - $ref: '#/components/schemas/ProblemReport'
+                      $ref: '#/components/schemas/AgentID'
               responses:
                 '200':
                   description: Return this code if you accept the callback
@@ -279,7 +276,7 @@ paths:
         Updates an existing local map to the system re-using a previous bounded context. The context describes the spatial and temporal extension of the local data.
       operationId: UpdateMapData
       security: 
-        - oAuthSample: [agents:write, maps:write]
+        - oAuthSample: [agents-write, maps-write]
       parameters:
         - name: ID
           in: path
@@ -307,14 +304,13 @@ paths:
         resultEvent:
           '{$request.body#/callbackUrl}':
             post:
+              operationId: UpdateMapDataResult
               requestBody:
                 description: Local map data update result
                 content:
                   application/json:
                     schema:
-                      oneOf:
-                        - $ref: '#/components/schemas/AgentID'
-                        - $ref: '#/components/schemas/ProblemReport'
+                      $ref: '#/components/schemas/AgentID'
               responses:
                 '200':
                   description: Return this code if you accept the callback
@@ -341,9 +337,9 @@ components:
           authorizationUrl: /oauth/authorize
           tokenUrl: /api/oauth.access
           scopes:
-            agents:read: Read agent data
-            agents:write: Create and delete agents. Modify agent data
-            maps:write: Create and modify local map data
+            agents-read: Read agent data
+            agents-write: Create and delete agents. Modify agent data
+            maps-write: Create and modify local map data
   responses:
     Accepted:
       description: Request was received and is being processed (Accepted)
