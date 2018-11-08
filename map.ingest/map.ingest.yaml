@@ -287,7 +287,7 @@ paths:
           in: query
           required: true
           schema:
-            $ref: '#/components/schemas/BoundedContext'
+            $ref: '#/components/schemas/MapBounds'
       requestBody:
         content:
           application/json:
