@@ -253,7 +253,6 @@ parameters:
     required: true
     type: string
     readOnly: true
-    format: uuid
   fromLon:
     name: fromLon
     in: query
@@ -326,7 +325,6 @@ definitions:
     example: "0729a580-2240-11e6-9eb5-0002a5d5c51b"
     type: string
     readOnly: true
-    format: uuid
   Sensor:
     description: Information associated to an installed sensor
     type: object
@@ -401,4 +399,3 @@ definitions:
       data:
         description: Map data blob
         type: string
-        format: binary
